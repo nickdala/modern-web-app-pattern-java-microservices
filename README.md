@@ -49,12 +49,6 @@ The environment name should be less than 18 characters and must be comprised of 
 azd env new <pick_a_name>
 ```
 
-Enable the AZD Terraform provider:
-
-```shell
-azd config set alpha.terraform on
-```
-
 Select the subscription that will be used for the deployment:
 
 ```shell
@@ -65,6 +59,12 @@ Set the Azure region to be used:
 
 ```shell
 azd env set AZURE_LOCATION <pick_a_region>
+```
+
+Optional: Set the App Registration Service management reference:
+
+```shell
+azd env set AZURE_SERVICE_MANAGEMENT_REFERENCE <service_management_reference>
 ```
 
 ## Create the Azure resources and deploy the code

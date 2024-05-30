@@ -18,6 +18,7 @@ import nz.net.ultraq.thymeleaf.layoutdialect.LayoutDialect;
 @SpringBootApplication
 @EnableCaching
 public class CamsApplication {
+
 	public static void main(String[] args) {
 		SpringApplication.run(CamsApplication.class, args);
 	}
