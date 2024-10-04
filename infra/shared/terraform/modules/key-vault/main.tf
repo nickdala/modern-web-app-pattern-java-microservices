@@ -69,7 +69,7 @@ resource "azurerm_private_endpoint" "keyvault_private_endpoint" {
     name                 = "privatednskeyvaultzonegroup"
     private_dns_zone_ids = [azurerm_private_dns_zone.key_vault_dns_zone[0].id]
   }
-  
+
   private_service_connection {
     name                           = "keyvault-privatelink"
     is_manual_connection           = false
