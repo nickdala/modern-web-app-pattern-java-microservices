@@ -3,14 +3,14 @@ locals {
   #####################################
   # Shared Variables
   #####################################
-  telemetryId = "92141f6a-c03e-4141-bc1c-2113e4772c8d-${var.location}"
+  telemetryId = "bd71b215-474b-4d90-b2d9-c1d2eb9245d1-${var.location}"
 
   base_tags = {
     "terraform"        = true
     "environment"      = var.environment
     "application-name" = var.application_name
     "contoso-version"  = "1.0"
-    "app-pattern-name" = "java-rwa"
+    "app-pattern-name" = "java-mwa"
     "azd-env-name"     = var.application_name
   }
 
