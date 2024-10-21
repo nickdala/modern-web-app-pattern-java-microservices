@@ -43,14 +43,3 @@ variable "georeplications" {
   default = []
 }
 
-variable "private_endpoint_subnet_id" {
-  type        = string
-  description = "The ID of the subnet where the private endpoint should be created"
-  default     = null
-}
-
-variable "hub_vnet_id" {
-  type        = string
-  description = "The ID of the Spoke VNET"
-  default     = null
-}

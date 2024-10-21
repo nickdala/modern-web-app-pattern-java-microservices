@@ -87,7 +87,7 @@ output "frontdoor_url" {
 // ---------------------------------------------------------------------------
 
 # ---------------------------
-#  Dev - Resource Group Name 
+#  Dev - Resource Group Name
 # ---------------------------
 
 output "dev_resource_group" {
@@ -128,13 +128,8 @@ output "AZURE_CONTAINER_REGISTRY_ENDPOINT" {
 }
 
 output "acr_name" {
-  value = var.environment == "prod" ? module.acr[0].name : module.dev_acr[0].acr_name
+  value = var.environment == "prod" ? module.acr[0].acr_name : module.dev_acr[0].acr_name
   description = "The Azure Container Registry Name."
-}
-
-output "acr_login_server" {
-  value = var.environment == "prod" ? module.acr[0].acr_login_server : module.dev_acr[0].acr_login_server
-  description = "The Azure Container Registry Login Server."
 }
 
 # ----------------------
@@ -150,4 +145,24 @@ output "azure_storage_account" {
 output "storage_container_name" {
   value = var.environment == "prod" ? module.storage[0].storage_container_name : module.dev_storage[0].storage_container_name
   description = "Azure Storage container name."
+}
+
+output "primary_app_config_keys" {
+  value = var.environment == "prod" ? local.primary_azconfig_keys : null
+  description = "The primary app config keys."
+}
+
+output "secondary_app_config_keys" {
+  value = var.environment == "prod" ? local.secondary_azconfig_keys : null
+  description = "The secondary app config keys."
+}
+
+output "primary_app_config_id" {
+  value = var.environment == "prod" ? module.azconfig[0].azconfig_id : module.dev_azconfig[0].azconfig_id
+  description = "The app config ID."
+}
+
+output "secondary_app_config_id" {
+  value = var.environment == "prod" ? module.secondary_azconfig[0].azconfig_id : null
+  description = "The secondary app config ID."
 }
