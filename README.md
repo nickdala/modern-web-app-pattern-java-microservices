@@ -2,18 +2,22 @@
 
 ## Introduction
 
-This repository contains a collection of patterns and best practices for building modern Java web applications. The patterns are designed to be used with the [Spring Framework](https://spring.io/) and [Azure](https://azure.microsoft.com/), but can be adapted to other frameworks and cloud providers.
+This repository provides a "real-world" application that implements the best practices and design patterns discussed in [Modern Web App pattern for Java](https://aka.ms/eap/mwa/java/doc). The patterns are designed to be used with the [Spring Framework](https://spring.io/) and [Azure](https://azure.microsoft.com/), but can be adapted to other frameworks and cloud providers.
 
+This project has [a companion article in the Azure Architecture Center](https://aka.ms/eap/mwa/java/doc) that describes design patterns and best practices. Here's an outline of the contents in this readme:
 
-## Prerequisites
+- [Architecture](#architecture)
+- [Workflow](#workflow)
+- [Steps to deploy the reference implementation](#steps-to-deploy-the-reference-implementation)
+- [Changes from Reliable Web App](./CHANGES.md)
+- [Additional links](#additional-links)
+- [Data Collection](#data-collection)
 
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-- [Azure Dev CLI](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd?tabs=winget-windows%2Cbrew-mac%2Cscript-linux&pivots=os-mac)
-- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
-- [jq](https://stedolan.github.io/jq/download/)
-- [Java 17](https://adoptopenjdk.net/)
-- [Maven 3.9.1](https://maven.apache.org/download.cgi)
-- [Protoc](https://grpc.io/docs/protoc-installation/)
+## Architecture
+
+Contoso Fiber aligned to a hub and spoke network topology in the production deployment architecture to centralize common resources. This network topology provided cost savings, enhanced security, and facilitated network integration (platform and hybrid):
+
+![Architecture](./docs/assets/diagrams/modern-web-app-java.svg)
 
 ## Steps to deploy the reference implementation
 
@@ -59,7 +63,7 @@ Once the command palette is open, search for `Dev Containers: Rebuild and Reopen
 
 ![WSL Ubuntu](docs/assets/vscode-reopen-in-container-command.png)
 
-## Login to Azure
+### 3. Login to Azure
 
 Before deploying, you must be authenticated to Azure and have the appropriate subscription selected. Run the following command to authenticate:
 
@@ -95,7 +99,7 @@ If you have multiple tenants, you can use the following command to log into the 
 azd auth login --tenant-id <tenant-id>
 ```
 
-## Create a new environment
+### 4. Create a new environment
 
 Next we provide the AZD tool with variables that it uses to create the deployment. The first thing we initialize is the AZD environment with a name.
 
@@ -123,7 +127,7 @@ Optional: Set the App Registration Service management reference:
 azd env set AZURE_SERVICE_MANAGEMENT_REFERENCE <service_management_reference>
 ```
 
-## Build the applications
+### 5. Build the applications
 
 Run the following command to build the applications:
 
@@ -131,7 +135,7 @@ Run the following command to build the applications:
 ./mvnw clean install
 ```
 
-## Create the Azure resources and deploy the code
+### 6. Create the Azure resources and deploy the code
 
 Run the following command to create the Azure resources and deploy the code (about 15-minutes to complete):
 
@@ -139,7 +143,7 @@ Run the following command to create the Azure resources and deploy the code (abo
 azd up
 ```
 
-## Tear down the deployment
+### 7. Tear down the deployment
 
 Run the following command to tear down the deployment:
 
@@ -161,6 +165,18 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
+## Additional links
+
+- [Known issues](known-issues.md)
+- [Troubleshooting](troubleshooting.md)
+- [Pattern Simulations](demo.md)
+- [Developer Experience](developer-experience.md)
+- [Calculating SLA](sla-calculation.md)
+- [Find additional resources](additional-resources.md)
+- [Report security concerns](SECURITY.md)
+- [Find Support](SUPPORT.md)
+- [Contributing](CONTRIBUTING.md)
+
 ## Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
@@ -168,3 +184,7 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## Data Collection
+
+The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft's privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkId=521839. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
