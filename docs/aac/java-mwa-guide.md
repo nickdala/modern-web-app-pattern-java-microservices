@@ -99,9 +99,9 @@ Use the [Strangler fig](/azure/architecture/patterns/strangler-fig) pattern to g
 
 - *Set up a routing layer* In the monolithic web app code base, implement a routing layer that directs traffic based on endpoints. Use custom routing logic as needed to handle specific business rules for directing traffic. For example, if you have a `/users` endpoint in your monolithic app and you moved that functionality to the decoupled service, the routing layer would direct all requests to `/users` to the new service.
 
-- *Manage feature rollout.* Use .NET Feature Management libraries to [implement feature flags](/azure/azure-app-configuration/use-feature-flags-dotnet-core) and [staged rollout](/azure/azure-app-configuration/howto-targetingfilter-aspnet-core) to gradually rollout of the decoupled service. The existing monolithic app routing should control how many requests the decoupled services receives. Start with a small percentage of requests and increase usage over time as you gain confidence in its stability and performance.
+- *Manage feature rollout.* [Implement feature flags](/azure/azure-app-configuration/use-feature-flags-spring-boot) and [staged rollout](/azure/azure-app-configuration/howto-targetingfilter) to gradually roll out the decoupled services. The existing monolithic app routing should control how many requests the decoupled services receives. Start with a small percentage of requests and increase usage over time as you gain confidence in its stability and performance.
 
-    For example, the reference implementation extracts the ticket rendering functionality into a standalone service, which can be gradually introduced to handle a larger portion of the ticket rendering requests. As the new service proves its reliability and performance, it can eventually take over the entire ticket rendering functionality from the monolith, completing the transition.
+    For example, the reference implementation extracts the email delivery functionality into a standalone service, which can be gradually introduced to handle a larger portion of the requests to send emails containing Contoso support guides. As the new service proves its reliability and performance, it can eventually take over the entire set of email responsibilities from the monolith, completing the transition.
 
 - *Use a façade service (if necessary).* A façade service is useful when a single request needs to interact with multiple services or when you want to hide the complexity of the underlying system from the client. However, if the decoupled service doesn't have any public-facing APIs, a façade service might not be necessary.
 
@@ -474,12 +474,12 @@ ENTRYPOINT ["dotnet", "./Relecloud.TicketRenderer.dll"]
 
 ## Deploy the reference implementation
 
-![GitHub logo](../../../../../_images/github.svg) Deploy the reference implementation of the [Modern Web App Pattern for .NET](https://github.com/azure/modern-web-app-pattern-dotnet). There are instructions for both development and production deployment in the repository. After you deploy, you can simulate and observe design patterns.
+![GitHub logo](../../../../../_images/github.svg) Deploy the reference implementation of the [Modern Web App Pattern for Java](https://github.com/azure/modern-web-app-pattern-java). There are instructions for both development and production deployment in the repository. After you deploy, you can simulate and observe design patterns.
 
-[![Diagram showing architecture of the reference implementation](../../../_images/modern-web-app-architecture-dotnet.svg)](../../../_images/modern-web-app-architecture-dotnet.svg)
-*Figure 3. Architecture of the reference implementation. Download a [Visio file](https://arch-center.azureedge.net/reliable-web-app-dotnet-1.1.vsdx) of this architecture.*
+[![Diagram showing architecture of the reference implementation](../../../_images/modern-web-app-architecture-java.svg)](../../../_images/modern-web-app-architecture-java.svg)
+*Figure 3. Architecture of the reference implementation. Download a [Visio file](https://arch-center.azureedge.net/modern-web-app-java-1.0.vsdx) of this architecture.*
 
 >[!div class="nextstepaction"]
 >[Modern Web App pattern for .NET reference implementation][reference-implementation]
 
-[reference-implementation]: https://github.com/Azure/modern-web-app-pattern-dotnet
+[reference-implementation]: https://github.com/Azure/modern-web-app-pattern-java
