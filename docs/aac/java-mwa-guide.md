@@ -293,29 +293,9 @@ The [Retry pattern](/azure/architecture/patterns/retry) allows applications to r
 
 - *Use exponential backoff.* Implement exponential backoff strategy for retry attempts. This means increasing the time between each retry exponentially, which helps reduce the load on the system during periods of high failure rates.
 
-- *Use SDK Retry functionality.* For services with specialized SDKs, like Azure Service Bus or Azure Blob Storage, use the built-in retry mechanisms. The built-in retry mechanisms are optimized for the service's typical use cases and can handle retries more effectively with less configuration required on your part. For example, the reference implementation uses the built-in retry functionality of the Azure Service Bus SDK (`ServiceBusClient` and `ServiceBusRetryOptions`). The `ServiceBusRetryOptions` fetches settings from `MessageBusOptions` to configure retry settings such as MaxRetries, Delay, MaxDelay, and TryTimeout.
+- *Use SDK Retry functionality.* For services with specialized SDKs, like Azure Service Bus or Azure Blob Storage, use the built-in retry mechanisms. The built-in retry mechanisms are optimized for the service's typical use cases and can handle retries more effectively with less configuration required on your part.
 
-    ```csharp
-    // ServiceBusClient is thread-safe and can be reused for the lifetime of the application.
-    services.AddSingleton(sp =>
-    {
-        var options = sp.GetRequiredService<IOptions<MessageBusOptions>>().Value;
-        var clientOptions = new ServiceBusClientOptions
-        {
-            RetryOptions = new ServiceBusRetryOptions
-            {
-                Mode = ServiceBusRetryMode.Exponential,
-                MaxRetries = options.MaxRetries,
-                Delay = TimeSpan.FromSeconds(options.BaseDelaySecondsBetweenRetries),
-                MaxDelay = TimeSpan.FromSeconds(options.MaxDelaySeconds),
-                TryTimeout = TimeSpan.FromSeconds(options.TryTimeoutSeconds)
-            }
-        };
-        return new ServiceBusClient(options.Host, azureCredential ?? new DefaultAzureCredential(), clientOptions);
-    });
-    ```
-
-- *Adopt standard resilience Libraries for HTTP Clients.* For HTTP communications, integrate a standard resilience library such as Polly or `Microsoft.Extensions.Http.Resilience`. These libraries offer comprehensive retry mechanisms that are crucial for managing communications with external web services.
+- *Adopt standard resilience Libraries for HTTP Clients.* For HTTP clients, you can use **Resilience4j** along with **Spring's RestTemplate** or **WebClient** to handle retries in HTTP communications. Spring's RestTemplate can be wrapped with Resilience4j's retry logic to handle transient HTTP errors effectively.
 
 - *Handle message locking.* For message-based systems, implement message handling strategies that support retries without data loss, such as using "peek-lock" modes where available. Ensure that failed messages are retried effectively and moved to a dead-letter queue after repeated failures.
 
