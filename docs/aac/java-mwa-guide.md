@@ -323,44 +323,36 @@ To configure authentication and authorization on any new Azure services (*worklo
 
 - *Grant least privilege to each new service.* Assign only necessary permissions to each new service identity. For example, if an identity only needs to push to a container registry, don't give it pull permissions. Review these permissions regularly and adjust as necessary. Use different identities for different roles, such as deployment and the application. This limits the potential damage if one identity is compromised.
 
-- *Adopt infrastructure as code (IaC).* Use Azure Bicep or similar IaC tools to define and manage your cloud resources. IaC ensures consistent application of security configurations in your deployments and allows you to version control your infrastructure setup.
+- *Adopt infrastructure as code (IaC).* Use Azure Bicep or similar IaC tools like Terraform to define and manage your cloud resources. IaC ensures consistent application of security configurations in your deployments and allows you to version control your infrastructure setup.
 
-The reference implementation uses IaC to assign managed identities to added services and specific roles to each identity. It defines roles and permissions access for deployment (`containerRegistryPushRoleId`), application owner (`containerRegistryPushRoleId`), and Azure Container Apps application (`containerRegistryPullRoleId`) (*see following code*).
+The reference implementation uses IaC to assign managed identities to added services and specific roles to each identity. It defines roles and permissions access for deployment by defining roles for ACR push and pull (*see following code*).
 
-```bicep
-roleAssignments: \[
-    {
-    principalId: deploymentSettings.principalId
-    principalType: deploymentSettings.principalType
-    roleDefinitionIdOrName: containerRegistryPushRoleId
-    }
-    {
-    principalId: ownerManagedIdentity.outputs.principal_id
-    principalType: 'ServicePrincipal'
-    roleDefinitionIdOrName: containerRegistryPushRoleId
-    }
-    {
-    principalId: appManagedIdentity.outputs.principal_id
-    principalType: 'ServicePrincipal'
-    roleDefinitionIdOrName: containerRegistryPullRoleId
-    }
-\]
-```
+```terraform
+resource "azurerm_role_assignment" "container_app_acr_pull" {
+  principal_id         = var.aca_identity_principal_id
+  role_definition_name = "AcrPull"
+  scope                = azurerm_container_registry.acr.id
+}
 
-The reference implementation assigns the managed identity the new Azure Container App identity at deployment (*see following code*).
+resource "azurerm_user_assigned_identity" "container_registry_user_assigned_identity" {
+  name                = "ContainerRegistryUserAssignedIdentity"
+  resource_group_name = var.resource_group
+  location            = var.location
+}
 
-```bicep
-module renderingServiceContainerApp 'br/public:avm/res/app/container-app:0.1.0' = {
-  name: 'application-rendering-service-container-app'
-  scope: resourceGroup()
-  params: {
-    // Other parameters omitted for brevity
-    managedIdentities: {
-      userAssignedResourceIds: [
-        managedIdentity.id
-      ]
-    }
-  }
+resource "azurerm_role_assignment" "container_registry_user_assigned_identity_acr_pull" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.container_registry_user_assigned_identity.principal_id
+}
+
+
+# For demo purposes, allow current user access to the container registry
+# Note: when running as a service principal, this is also needed
+resource "azurerm_role_assignment" "acr_contributor_user_role_assignement" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "Contributor"
+  principal_id         = data.azuread_client_config.current.object_id
 }
 ```
 
