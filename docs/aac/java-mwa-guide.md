@@ -150,9 +150,55 @@ This approach ensures that the main application remains responsive and can handl
 
 - *Implement message retry and removal.* Implement a mechanism to retry processing of queued messages that can't be processed successfully. If failures persist, these messages should be removed from the queue. For example, Azure Service Bus has built-in retry and dead letter queue features.
 
-- *Configure idempotent message processing.* The logic that processes messages from the queue must be idempotent to handle cases where a message might be processed more than once. In Spring Boot, you can use `@StreamListener` or `@KafkaListener` with a unique message identifier to prevent duplicate processing. Or you can organize the business process o operate in a functional approach with Spring Cloud Stream, where the `consume` method is defined in a way that produces the same result when it is executed repeatedly (*see example code*):
+- *Configure idempotent message processing.* The logic that processes messages from the queue must be idempotent to handle cases where a message might be processed more than once. In Spring Boot, you can use `@StreamListener` or `@KafkaListener` with a unique message identifier to prevent duplicate processing. Or you can organize the business process o operate in a functional approach with Spring Cloud Stream, where the `consume` method is defined in a way that produces the same result when it is executed repeatedly.
 
-    ```java
+- *Manage changes to the experience.* Asynchronous processing can lead to tasks not being immediately completed. Users should be made aware when their task is still being processed to set correct expectations and avoid confusion. Use visual cues or messages to indicate that a task is in progress. Give users the option to receive notifications when their task is done, such as an email or push notification.
+
+### Implement the Competing Consumers pattern
+
+:::row:::
+    :::column:::
+        *Well-Architected Framework benefit: Reliability ([RE:05](/azure/well-architected/reliability/regions-availability-zones), [RE:07](/azure/well-architected/reliability/background-jobs)), Cost Optimization ([CO:05](/azure/well-architected/cost-optimization/get-best-rates), [CO:07](/azure/well-architected/cost-optimization/optimize-component-costs)), Performance Efficiency ([PE:05](/azure/well-architected/performance-efficiency/scale-partition), [PE:07](/azure/well-architected/performance-efficiency/optimize-code-infrastructure))*
+    :::column-end:::
+:::row-end:::
+
+Implement the [Competing Consumers pattern](/azure/architecture/patterns/competing-consumers) in the decoupled service to manage incoming tasks from the message queue. This pattern involves distributing tasks across multiple instances of decoupled services. These services process messages from the queue, enhancing load balancing and boosting the system's capacity to handle simultaneous requests. The Competing Consumers pattern is effective when:
+
+- The sequence of message processing isn't crucial.
+- The queue remains unaffected by malformed messages.
+- The processing operation is idempotent, meaning it can be applied multiple times without changing the result beyond the initial application.
+
+To implement the Competing Consumers pattern, follow these recommendations:
+
+- *Handle concurrent messages.* When receiving messages from a queue, ensure that your system scales predictably by configuring the concurrency to match your system design. Your load test results will help you decide the appropriate number of concerrent messages to handle and you can start from 1 to measure the impact how the system will perform.
+
+- *Disable prefetching.* Disable prefetching of messages so consumers only fetch messages when they're ready.
+
+- *Use reliable message processing modes.* Use a reliable processing mode, such as PeekLock (or its equivalent), that automatically retries messages that fail processing. This mode enhances reliability over deletion-first methods. If one worker fails to handle a message, another must be able to process it without errors, even if the message is processed multiple times.
+
+- *Implement error handling.* Route malformed or unprocessable messages to a separate, dead-letter queue. This design prevents repetitive processing. For example, you can catch exceptions during message processing and move the problematic message to the separate queue. For Azure Service Bus, messages are moved to the dead-leter queue after a specified number of delivery attempts or on explicit rejection by the application.
+
+- *Handle out-of-order messages.* Design consumers to process messages that arrive out of sequence. Multiple parallel consumers means they might process messages out of order.
+
+- *Scale based on queue length.* Services consuming messages from a queue should autoscale based on queue length. Scale-based autoscaling allows for efficient processing of spikes of incoming messages.
+
+- *Use message-reply queue.* If the system requires notifications post-message processing, set up a dedicated reply or response queue. This setup divides operational messaging from notification processes.
+
+- *Use stateless services.* Consider using stateless services to process requests from a queue. It allows for easy scaling and efficient resource usage.
+
+- *Configure logging.* Integrate logging and specific exception handling within the message processing workflow. Focus on capturing serialization errors and directing these problematic messages to a dead letter mechanism. These logs provide valuable insights for troubleshooting.
+
+For example, the reference implementation uses the Competing Consumers pattern on a stateless service running in Azure Container App to process the email delivery requests from an Azure Service Bus queue.
+
+The processor logs message processing details, aiding in troubleshooting and monitoring. It captures deserialization errors and provides insights needed when debugging the process. The service scales at the container level, allowing for efficient handling of message spikes based on queue length.
+
+```java
+@Configuration
+public class EmailProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailProcessor.class);
+
+    @Bean
     Function<byte[], byte[]> consume() {
         return message -> {
 
@@ -177,83 +223,7 @@ This approach ensures that the main application remains responsive and can handl
             }
         };
     }
-    ```
-
-- *Manage changes to the experience.* Asynchronous processing can lead to tasks not being immediately completed. Users should be made aware when their task is still being processed to set correct expectations and avoid confusion. Use visual cues or messages to indicate that a task is in progress. Give users the option to receive notifications when their task is done, such as an email or push notification.
-
-### Implement the Competing Consumers pattern
-
-:::row:::
-    :::column:::
-        *Well-Architected Framework benefit: Reliability ([RE:05](/azure/well-architected/reliability/regions-availability-zones), [RE:07](/azure/well-architected/reliability/background-jobs)), Cost Optimization ([CO:05](/azure/well-architected/cost-optimization/get-best-rates), [CO:07](/azure/well-architected/cost-optimization/optimize-component-costs)), Performance Efficiency ([PE:05](/azure/well-architected/performance-efficiency/scale-partition), [PE:07](/azure/well-architected/performance-efficiency/optimize-code-infrastructure))*
-    :::column-end:::
-:::row-end:::
-
-Implement the [Competing Consumers pattern](/azure/architecture/patterns/competing-consumers) in the decoupled service to manage incoming tasks from the message queue. This pattern involves distributing tasks across multiple instances of decoupled services. These services process messages from the queue, enhancing load balancing and boosting the system's capacity to handle simultaneous requests. The Competing Consumers pattern is effective when:
-
-- The sequence of message processing isn't crucial.
-- The queue remains unaffected by malformed messages.
-- The processing operation is idempotent, meaning it can be applied multiple times without changing the result beyond the initial application.
-
-To implement the Competing Consumers pattern, follow these recommendations:
-
-- *Handle concurrent messages.* When receiving messages from a queue, ensure that your system is designed to handle multiple messages concurrently. Set the maximum concurrent calls to 1 so a separate consumer handles each message.
-
-- *Disable prefetching.* Disable message prefetching of messages so consumers fetching messages only when they're ready.
-
-- *Use reliable message processing modes.* Use a reliable processing mode, such as PeekLock (or its equivalent), that automatically retry messages that fail processing. This mode enhances reliability over deletion-first methods. If one worker fails to handle a message, another must be able to process it without errors, even if the message is processed multiple times.
-
-- *Implement error handling.* Route malformed or unprocessable messages to a separate, dead-letter queue. This design prevents repetitive processing. For example, you can catch exceptions during message processing and move the problematic message to the separate queue.
-
-- *Handle out-of-order messages.* Design consumers to process messages that arrive out of sequence. Multiple parallel consumers means they might process messages out of order.
-
-- *Scale based on queue length.* Services consuming messages from a queue should autoscale based on queue length. Scale-based autoscaling allows for efficient processing of spikes of incoming messages.
-
-- *Use message-reply queue.* If the system requires notifications post-message processing, set up a dedicated reply or response queue. This setup divides operational messaging from notification processes.
-
-- *Use stateless services.* Consider using stateless services to process requests from a queue. It allows for easy scaling and efficient resource usage.
-
-- *Configure logging.* Integrate logging and specific exception handling within the message processing workflow. Focus on capturing serialization errors and directing these problematic messages to a dead letter mechanism. These logs provide valuable insights for troubleshooting.
-
-For example, the reference implementation uses the Competing Consumers pattern a stateless service on Azure Container App to process ticket-rendering requests from an Azure Service Bus queue. It configures a queue processor with:
-
-- *AutoCompleteMessages*: Automatically completes messages if processed without failure.
-- *ReceiveMode*: Uses PeekLock mode and redelivers messages if they aren't settled.
-- *MaxConcurrentCalls*: Set to 1 to handle one message at a time.
-- *PrefetchCount*: Set to 0 to avoid prefetching messages.
-
-The processor logs message processing details, aiding in troubleshooting and monitoring. It captures deserialization errors and routes invalid messages to a dead-letter queue, preventing repetitive processing of faulty messages. The service scales at the container level, allowing for efficient handling of message spikes based on queue length.
-
-```C#
-// Create a processor for the given queue that will process incoming messages
-var processor = serviceBusClient.CreateProcessor(path, new ServiceBusProcessorOptions
-{
-    // Allow the messages to be auto-completed if processing finishes without failure
-    AutoCompleteMessages = true,
-    // PeekLock mode provides reliability in that unsettled messages will be redelivered on failure
-    ReceiveMode = ServiceBusReceiveMode.PeekLock,
-    // Containerized processors can scale at the container level and need not scale via the processor options
-    MaxConcurrentCalls = 1,
-    PrefetchCount = 0
-});
-
-// Called for each message received by the processor
-processor.ProcessMessageAsync += async args =>
-{
-    logger.LogInformation("Processing message {MessageId} from {ServiceBusNamespace}/{Path}", args.Message.MessageId, args.FullyQualifiedNamespace, args.EntityPath);
-    // Unhandled exceptions in the handler will be caught by the processor and result in abandoning and dead-lettering the message
-    try
-    {
-        var message = args.Message.Body.ToObjectFromJson<T>();
-        await messageHandler(message, args.CancellationToken);
-        logger.LogInformation("Successfully processed message {MessageId} from {ServiceBusNamespace}/{Path}", args.Message.MessageId, args.FullyQualifiedNamespace, args.EntityPath);
-    }
-    catch (JsonException)
-    {
-        logger.LogError("Invalid message body; could not be deserialized to {Type}", typeof(T));
-        await args.DeadLetterMessageAsync(args.Message, $"Invalid message body; could not be deserialized to {typeof(T)}", cancellationToken: args.CancellationToken);
-    }
-};
+}
 ```
 
 ### Implement the Health Endpoint Monitoring pattern
