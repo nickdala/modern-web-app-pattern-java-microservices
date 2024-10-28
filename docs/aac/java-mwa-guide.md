@@ -117,33 +117,66 @@ Use the [Strangler fig](/azure/architecture/patterns/strangler-fig) pattern to g
 
 Implement the [Queue-Based Load Leveling pattern](/azure/architecture/patterns/queue-based-load-leveling) on producer portion of the decoupled service to asynchronously handle tasks that don't need immediate responses. This pattern enhances overall system responsiveness and scalability by using a queue to manage workload distribution. It allows the decoupled service to process requests at a consistent rate. To implement this pattern effectively, follow these recommendations:
 
-- *Use nonblocking message queuing.* Ensure the process that sends messages to the queue doesn't block other processes while waiting for the decoupled service to handle messages in the queue. If the process requires the result of the decoupled-service operation, have an alternative way to handle the situation while waiting for the queued operation to complete. For example, the reference implementation uses Azure Service Bus and the `await` keyword with `messageSender.PublishAsync()` to asynchronously publish messages to the queue without blocking the thread that executes this code (*see example code*):
+- *Use non-blocking message queuing.* Ensure the process that sends messages to the queue doesn't block other processes while waiting for the decoupled service to handle messages in the queue. If the process requires the result of the decoupled-service operation, implement an alternative way to handle the situation while waiting for the queued operation to complete. For example, in Spring Boot, you can use the `StreamBridge` class to asynchronously publish messages to the queue without blocking the calling thread (*see example code*):
 
-    ```csharp
+    ```java
+    private final StreamBridge streamBridge;
+
+    public SupportGuideQueueSender(StreamBridge streamBridge) {
+        this.streamBridge = streamBridge;
+    }
+
     // Asynchronously publish a message without blocking the calling thread
-    await messageSender.PublishAsync(new TicketRenderRequestMessage(Guid.NewGuid(), ticket, null, DateTime.Now), CancellationToken.None);
+    @Override
+    public void send(String to, String guideUrl, Long requestId) {
+        EmailRequest emailRequest = EmailRequest.newBuilder()
+                .setRequestId(requestId)
+                .setEmailAddress(to)
+                .setUrlToManual(guideUrl)
+                .build();
+
+        log.info("EmailRequest: {}", emailRequest);
+
+        var message = emailRequest.toByteArray();
+        streamBridge.send(EMAIL_REQUEST_QUEUE, message);
+
+        log.info("Message sent to the queue");
+    }
     ```
+
+This Java example uses `StreamBridge` to send messages asynchronously
 
 This approach ensures that the main application remains responsive and can handle other tasks concurrently, while the decoupled service processes the queued requests at a manageable rate.
 
 - *Implement message retry and removal.* Implement a mechanism to retry processing of queued messages that can't be processed successfully. If failures persist, these messages should be removed from the queue. For example, Azure Service Bus has built-in retry and dead letter queue features.
 
-- *Configure idempotent message processing.* The logic that processes messages from the queue must be idempotent to handle cases where a message might be processed more than once. For example, the reference implementation uses `ServiceBusClient.CreateProcessor` with `AutoCompleteMessages = true` and `ReceiveMode = ServiceBusReceiveMode.PeekLock` to ensure messages are only processed once and can be reprocessed on failure (*see following code*).
+- *Configure idempotent message processing.* The logic that processes messages from the queue must be idempotent to handle cases where a message might be processed more than once. In Spring Boot, you can use `@StreamListener` or `@KafkaListener` with a unique message identifier to prevent duplicate processing. Or you can organize the business process o operate in a functional approach with Spring Cloud Stream, where the `consume` method is defined in a way that produces the same result when it is executed repeatedly (*see example code*):
 
-    ```csharp
-    // Create a processor for idempotent message processing
-    var processor = serviceBusClient.CreateProcessor(path, new ServiceBusProcessorOptions
-    {
-        // Allow the messages to be auto-completed if processing finishes without failure
-        AutoCompleteMessages = true,
+    ```java
+    Function<byte[], byte[]> consume() {
+        return message -> {
 
-        // PeekLock mode provides reliability in that unsettled messages will be redelivered on failure
-        ReceiveMode = ServiceBusReceiveMode.PeekLock,
+            log.info("New message received");
 
-        // Containerized processors can scale at the container level and need not scale via the processor options
-        MaxConcurrentCalls = 1,
-        PrefetchCount = 0
-    });
+            try {
+                EmailRequest emailRequest = EmailRequest.parseFrom(message);
+                log.info("EmailRequest: {}", emailRequest);
+
+                EmailResponse emailResponse = EmailResponse.newBuilder()
+                        .setEmailAddress(emailRequest.getEmailAddress())
+                        .setUrlToManual(emailRequest.getUrlToManual())
+                        .setRequestId(emailRequest.getRequestId())
+                        .setMessage("Email sent to " + emailRequest.getEmailAddress() + " with URL to manual " + emailRequest.getUrlToManual())
+                        .setStatus(Status.SUCCESS)
+                        .build();
+
+                return emailResponse.toByteArray();
+
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException("Error parsing email request message", e);
+            }
+        };
+    }
     ```
 
 - *Manage changes to the experience.* Asynchronous processing can lead to tasks not being immediately completed. Users should be made aware when their task is still being processed to set correct expectations and avoid confusion. Use visual cues or messages to indicate that a task is in progress. Give users the option to receive notifications when their task is done, such as an email or push notification.
