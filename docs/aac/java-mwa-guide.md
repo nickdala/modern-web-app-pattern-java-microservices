@@ -150,7 +150,7 @@ This approach ensures that the main application remains responsive and can handl
 
 - *Implement message retry and removal.* Implement a mechanism to retry processing of queued messages that can't be processed successfully. If failures persist, these messages should be removed from the queue. For example, Azure Service Bus has built-in retry and dead letter queue features.
 
-- *Configure idempotent message processing.* The logic that processes messages from the queue must be idempotent to handle cases where a message might be processed more than once. In Spring Boot, you can use `@StreamListener` or `@KafkaListener` with a unique message identifier to prevent duplicate processing. Or you can organize the business process o operate in a functional approach with Spring Cloud Stream, where the `consume` method is defined in a way that produces the same result when it is executed repeatedly.
+- *Configure idempotent message processing.* The logic that processes messages from the queue must be idempotent to handle cases where a message might be processed more than once. In Spring Boot, you can use `@StreamListener` or `@KafkaListener` with a unique message identifier to prevent duplicate processing. Or you can organize the business process o operate in a functional approach with Spring Cloud Stream, where the `consume` method is defined in a way that produces the same result when it is executed repeatedly. Read [Spring Cloud Stream with Azure Service Bus](/azure/developer/java/spring-framework/configure-spring-cloud-stream-binder-java-app-with-service-bus?tabs=use-a-service-bus-queue) for further list of settings that manage the behavior of how messages are consumed.
 
 - *Manage changes to the experience.* Asynchronous processing can lead to tasks not being immediately completed. Users should be made aware when their task is still being processed to set correct expectations and avoid confusion. Use visual cues or messages to indicate that a task is in progress. Give users the option to receive notifications when their task is done, such as an email or push notification.
 
@@ -190,7 +190,7 @@ To implement the Competing Consumers pattern, follow these recommendations:
 
 For example, the reference implementation uses the Competing Consumers pattern on a stateless service running in Azure Container App to process the email delivery requests from an Azure Service Bus queue.
 
-The processor logs message processing details, aiding in troubleshooting and monitoring. It captures deserialization errors and provides insights needed when debugging the process. The service scales at the container level, allowing for efficient handling of message spikes based on queue length.
+The processor logs message processing details, aiding in troubleshooting and monitoring. It captures deserialization errors and provides insights needed when debugging the process. The service scales at the container level, allowing for efficient handling of message spikes based on queue length (*see following code*).
 
 ```java
 @Configuration
@@ -234,49 +234,50 @@ public class EmailProcessor {
     :::column-end:::
 :::row-end:::
 
-Implement the [Health Endpoint Monitoring pattern](/azure/architecture/patterns/health-endpoint-monitoring) in the main app code and decoupled service code to track the health of application endpoints. Orchestrators like Azure Kubernetes Service or Azure Container Apps can poll these endpoints to verify service health and restart unhealthy instances. ASP.NET Core apps can add dedicated [health check middleware](/aspnet/core/host-and-deploy/health-checks) to efficiently serve endpoint health data and key dependencies. To implement the Health Endpoint Monitoring pattern, follow these recommendations:
+Implement the [Health Endpoint Monitoring pattern](/azure/architecture/patterns/health-endpoint-monitoring) in the main app code and decoupled service code to track the health of application endpoints. Orchestrators like Azure Kubernetes Service or Azure Container Apps can poll these endpoints to verify service health and restart unhealthy instances. Spring Boot provides built-in support for health checks with Spring Boot Actuator, which can expose health check endpoints for key dependencies like databases, message brokers, and storage systems. To implement the Health Endpoint Monitoring pattern, follow these recommendations:
 
-- *Implement health checks.* Use [ASP.NET Core health checks middleware](/aspnet/core/host-and-deploy/health-checks) to provide health check endpoints.
+- *Implement Health Checks.* Use Spring Boot Actuator to provide health check endpoints. Spring Boot Actuator exposes an endpoint `/actuator/health` that includes built-in health indicators and custom checks for various dependencies.
+    - To enable the health endpoint, add the `spring-boot-starter-actuator` dependency in your `pom.xml` or `build.gradle` file.
 
-- *Validate dependencies.* Ensure that your health checks validate the availability of key dependencies, such as the database, storage, and messaging system. The non-Microsoft package, [AspNetCore.Diagnostics.HealthChecks](https://github.com/Xabaril/AspNetCore.Diagnostics.HealthChecks), can implement health check dependency checks for many common app dependencies.
+        ```xml
+        <!-- Add Spring Boot Actuator dependency -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        ```
+    - Configure the health endpoint in `application.properties` as shown in the reference sample:
+        ```txt
+        management.endpoints.web.exposure.include=metrics,health,info,retry,retryevents
+        ```
 
-    For example, the reference implementation uses ASP.NET Core health check middleware to expose health check endpoints, using the `AddHealthChecks()` method on the `builder.Services` object. The code validates the availability of key dependencies, Azure Blob Storage, and Azure Service Bus Queue with the `AddAzureBlobStorage()` and `AddAzureServiceBusQueue()` methods, which are part of the `AspNetCore.Diagnostics.HealthChecks` package. Azure Container Apps allows configuration of [health probes](/azure/container-apps/health-probes) that are monitored to gauge whether apps are healthy or in need of recycling.
+- *Validate dependencies.* Spring Boot Actuator includes health indicators for various dependencies like databases, message brokers (e.g., RabbitMQ or Kafka), and storage services.
 
-    ```C#
-    // Add health checks, including health checks for Azure services that are used by this service.
-    // The Blob Storage and Service Bus health checks are provided by AspNetCore.Diagnostics.HealthChecks
-    // (a popular open source project) rather than by Microsoft. https://github.com/Xabaril/AspNetCore.Diagnostics.HealthChecks
-    builder.Services.AddHealthChecks()
-    .AddAzureBlobStorage(options =>
-    {
-        // AddAzureBlobStorage will use the BlobServiceClient registered in DI
-        // We just need to specify the container name
-        options.ContainerName = builder.Configuration.GetRequiredConfigurationValue("App:StorageAccount:Container");
-    })
-    .AddAzureServiceBusQueue(
-        builder.Configuration.GetRequiredConfigurationValue("App:ServiceBus:Host"),
-        builder.Configuration.GetRequiredConfigurationValue("App:ServiceBus:RenderRequestQueueName"),
-        azureCredentials);
+    - To validate the availability of Azure services such as Azure Blob Storage or Azure Service Bus, use community plugins like **Spring Cloud Azure** or **Micrometer** integrations, which provide health indicators for these services.
+    - If custom checks are needed, you can implement them by creating a custom `HealthIndicator` bean.
+    
+        ```java
+        import org.springframework.boot.actuate.health.Health;
+        import org.springframework.boot.actuate.health.HealthIndicator;
+        import org.springframework.stereotype.Component;
 
-    // Further app configuration omitted for brevity
-    app.MapHealthChecks("/health");
-    ```
+        @Component
+        public class CustomAzureServiceBusHealthIndicator implements HealthIndicator {
+            @Override
+            public Health health() {
+                // Implement your health check logic here (e.g., ping Azure Service Bus)
+                boolean isServiceBusHealthy = checkServiceBusHealth();
+                return isServiceBusHealthy ? Health.up().build() : Health.down().build();
+            }
 
-- *Configure Azure resources.* Configure the Azure resource to use the app's health check URLs to confirm liveness and readiness. For example, the reference implementation uses Bicep to configure the health check URLs to confirm the liveness and readiness of the Azure resource. A liveness probe to hit the `/health` endpoint every 10 seconds after an initial delay of 2 seconds.
-
-    ```bicep
-    probes: [
-      {
-        type: 'liveness'
-        httpGet: {
-          path: '/health'
-          port: 8080
+            private boolean checkServiceBusHealth() {
+                // Implement health check logic (pinging or connecting to the service)
+                return true; // Placeholder, implement actual logic
+            }
         }
-        initialDelaySeconds: 2
-        periodSeconds: 10
-      }
-    ]
-    ```
+        ```
+
+- *Configure Azure resources.* Configure the Azure resource to use the app's health check URLs to confirm liveness and readiness. For example you can use Terraform to use the health check URLs to confirm the liveness and readiness of apps deployed to Azure Container Apps. Read [Health probes in Azure Container Apps](azure/container-apps/health-probes) to learn more.
 
 ### Implement the Retry Pattern
 
