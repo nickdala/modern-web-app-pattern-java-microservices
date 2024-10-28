@@ -417,38 +417,40 @@ In this configuration:
     :::column-end:::
 :::row-end:::
 Containerization means that all dependencies for the app to function are encapsulated in a lightweight image that can be reliably deployed to a wide range of hosts. To containerize deployment, follow these recommendations:
+
 - *Identify domain boundaries.* Start by identifying the domain boundaries within your monolithic application. This helps determine which parts of the application you can extract into separate services.
-- *Create docker images.* When creating Docker images for your .NET services, use chiseled base images. These images contain only the minimal set of packages needed for .NET to run, which minimizes both the package size and the attack surface area.
-- *Use multi-stage Dockerfiles.* Implement multi-stage Dockerfiles to separate build-time assets from the runtime container image. It helps to keep your production images small and secure.
-- *Run as nonroot user.* Run your .NET containers as a nonroot user (via user name or UID, $APP_UID) to align with the principle of least privilege. It limits the potential effects of a compromised container.
+- *Create docker images.* When creating Docker images for your Java services, use official OpenJDK base images. These images contain only the minimal set of packages needed for Java to run, which minimizes both the package size and the attack surface area.
+- *Use multi-stage Dockerfiles.* Use a multi-stage Dockerfiles to separate build-time assets from the runtime container image. It helps to keep your production images small and secure. You can also use a pre-configured build server and copy the jar file into the container image.
+- *Run as nonroot user.* Run your Java containers as a nonroot user (via user name or UID, $APP_UID) to align with the principle of least privilege. It limits the potential effects of a compromised container.
 - *Listen on port 8080.* When running as a nonroot user, configure your application to listen on port 8080. It's a common convention for nonroot users.
 - *Encapsulate dependencies.* Ensure that all dependencies for the app to function are encapsulated in the Docker container image. Encapsulation allows the app to be reliably deployed to a wide range of hosts.
 - *Choose the right base images.* The base image you choose depends on your deployment environment. If you're deploying to Azure Container Apps, for instance, you need to use Linux Docker images.
-For example, the reference implementation uses a [multi-stage](https://docs.docker.com/build/building/multi-stage/) build process. The initial stages compile and build the application using a full SDK image (`mcr.microsoft.com/dotnet/sdk:8.0-jammy`). The final runtime image is created from the `chiseled` base image, which excludes the SDK and build artifacts. The service runs as a nonroot user (`USER $APP_UID`) and exposes port 8080. The dependencies required for the application to operate are included within the Docker image, as evidenced by the commands to copy project files and restore packages. The choice of Linux-based images (`mcr.microsoft.com/dotnet/aspnet:8.0-jammy-chiseled`) for the runtime environment for deployment within Azure Container Apps, which requires Linux containers.
+
+The reference implementation demonstrates a Docker build process for containerizing a Java application. This Dockerfile uses a single-stage build with the OpenJDK base image (`mcr.microsoft.com/openjdk/jdk:17-ubuntu`), which provides the necessary Java runtime environment.
+
+The Dockerfile includes the following steps:
+1. **Volume Declaration**: A temporary volume (`/tmp`) is defined, allowing for temporary file storage separate from the container's main filesystem.
+2. **Copying Artifacts**: The application's JAR file (`email-processor.jar`) is copied into the container, along with the Application Insights agent (`applicationinsights-agent.jar`) for monitoring.
+3. **Setting the Entrypoint**: The container is configured to run the application with the Application Insights agent enabled, using `java -javaagent` to monitor the application during runtime.
+
+This Dockerfile keeps the image lean by only including runtime dependencies, suitable for deployment environments like **Azure Container Apps**, which support Linux-based containers.
+
 
 ```dockerfile
-# Build in a separate stage to avoid copying the SDK into the final image
-FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
-ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
-# Restore packages
-COPY ["Relecloud.TicketRenderer/Relecloud.TicketRenderer.csproj", "Relecloud.TicketRenderer/"]
-COPY ["Relecloud.Messaging/Relecloud.Messaging.csproj", "Relecloud.Messaging/"]
-COPY ["Relecloud.Models/Relecloud.Models.csproj", "Relecloud.Models/"]
-RUN dotnet restore "./Relecloud.TicketRenderer/Relecloud.TicketRenderer.csproj"
-# Build and publish
-COPY . .
-WORKDIR "/src/Relecloud.TicketRenderer"
-RUN dotnet publish "./Relecloud.TicketRenderer.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-# Chiseled images contain only the minimal set of packages needed for .NET 8.0
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy-chiseled AS final
-WORKDIR /app
-EXPOSE 8080
-# Copy the published app from the build stage
-COPY --from=build /app/publish .
-# Run as non-root user
-USER $APP_UID
-ENTRYPOINT ["dotnet", "./Relecloud.TicketRenderer.dll"]
+# Use OpenJDK 17 base image on Ubuntu as the foundation
+FROM mcr.microsoft.com/openjdk/jdk:17-ubuntu
+
+# Define a volume to allow temporary files to be stored separately from the container's main file system
+VOLUME /tmp
+
+# Copy the packaged JAR file into the container
+COPY target/email-processor.jar app.jar
+
+# Copy the Application Insights agent for monitoring
+COPY target/agent/applicationinsights-agent.jar applicationinsights-agent.jar
+
+# Set the entry point to run the application with the Application Insights agent
+ENTRYPOINT ["java", "-javaagent:applicationinsights-agent.jar", "-jar", "/app.jar"]
 ```
 
 ## Deploy the reference implementation
@@ -459,6 +461,6 @@ ENTRYPOINT ["dotnet", "./Relecloud.TicketRenderer.dll"]
 *Figure 3. Architecture of the reference implementation. Download a [Visio file](https://arch-center.azureedge.net/modern-web-app-java-1.0.vsdx) of this architecture.*
 
 >[!div class="nextstepaction"]
->[Modern Web App pattern for .NET reference implementation][reference-implementation]
+>[Modern Web App pattern for Java reference implementation][reference-implementation]
 
 [reference-implementation]: https://github.com/Azure/modern-web-app-pattern-java
