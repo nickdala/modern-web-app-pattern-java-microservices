@@ -372,41 +372,44 @@ To configure authentication and authorization on users (*user identities*), foll
 
 The Modern Web App pattern begins breaking up the monolithic architecture and introduces service decoupling. When you decouple a web app architecture, you can scale decoupled services independently. Scaling the Azure services to support an independent web app service, rather than an entire web app, optimizes scaling costs while meeting demands. To autoscale containers, follow these recommendations:
 
-- *Use stateless services.* Ensure your services are stateless. If your .NET application contains in-process session state, externalize it to a distributed cache like Redis or a database like Azure SQL Server.
+- *Use stateless services.* Ensure your services are stateless. If your web app contains in-process session state, externalize it to a distributed cache like Redis or a database like Azure SQL Server.
 
 - *Configure autoscaling rules.* Use the autoscaling configurations that provide the most cost-effective control over your services. For containerized services, consider event-based scaling, such as Kubernetes Event-Driven Autoscaler (KEDA) often provides granular control, allowing you to scale based on event metrics. [Azure Container Apps](/azure/container-apps/scale-app) and Azure Kubernetes Service support KEDA. For services that don't support KEDA, such as [Azure App Service](/azure/app-service/manage-automatic-scaling), use the autoscaling features provided by the platform itself. These features often include scaling based on metrics-based rules or HTTP traffic.
 
 - *Configure minimum replicas.* To prevent a cold start, configure autoscaling settings to maintain a minimum of one replica. A cold start is when you initialize a service from a stopped state, which often creates a delayed response. If minimizing costs is a priority and you can tolerate cold start delays, set the minimum replica count to 0 when configuring autoscaling.
 
 - *Configure a cooldown period.* Apply an appropriate cooldown period to introduce a delay between scaling events. The goal is to [prevent excessive scaling](/azure/well-architected/cost-optimization/optimize-scaling-costs#optimize-autoscaling) activities triggered by temporary load spikes.
+
 - *Configure queue-based scaling.* If your application uses a message queue like Azure Service Bus, configure your autoscaling settings to scale based on the length of the queue with request messages. The scaler aims to maintain one replica of the service for every N message in the queue (rounded up).
 
-For example, the reference implementation uses the [Azure Service Bus KEDA scaler](/azure/container-apps/scale-app) to scale the Container App based on the length of the queue. The `service-bus-queue-length-rule` scales the service based on the length of a specified Azure Service Bus queue. The `messageCount` parameter is set to 10, so the scaler has one service replica for every 10 messages in the queue. The `scaleMaxReplicas` and `scaleMinReplicas` parameters set the maximum and minimum number of replicas for the service. The `queue-connection-string secret`, which contains the connection string for the Service Bus queue, is retrieved from Key Vault. This secret is used to authenticate the scaler to the Service Bus.
+For example, the reference implementation uses the **Azure Service Bus KEDA** scaler to automatically scale the **Azure Container App** based on the length of the Azure Service Bus queue. The scaling rule, named `service-bus-queue-length-rule`, adjusts the number of service replicas depending on the message count in the specified Azure Service Bus queue.
 
-```yml
-scaleRules: [
-  {
-    name: 'service-bus-queue-length-rule'
-    custom: {
-      type: 'azure-servicebus'
-      metadata: {
-        messageCount: '10'
-        namespace: renderRequestServiceBusNamespace
-        queueName: renderRequestServiceBusQueueName
+In this configuration:
+ - The `messageCount` parameter is set to 10, which means the scaler will add one replica for every 10 messages in the queue.
+ 
+ - The **maximum replicas** (`max_replicas`) are set to 10, and minimum replicas are implicitly 0 unless overridden, which allows the service to scale down to zero when there are no messages in the queue.
+
+ - The connection string for the Service Bus queue is stored securely as a secret in Azure, named `azure-servicebus-connection-string`, which is used to authenticate the scaler to the Service Bus.
+
+```terraform
+    max_replicas = 10
+    min_replicas = 1
+
+    custom_scale_rule {
+      name             = "service-bus-queue-length-rule"
+      custom_rule_type = "azure-servicebus"
+      metadata = {
+        messageCount = 10
+        namespace    = var.servicebus_namespace
+        queueName    = var.email_request_queue_name
       }
-      auth: [
-        {
-          secretRef: 'render-request-queue-connection-string'
-          triggerParameter: 'connection'
-        }
-      ]
+      authentication {
+        secret_name       = "azure-servicebus-connection-string"
+        trigger_parameter = "connection"
+      }
     }
-  }
-]
-
-scaleMaxReplicas: 5
-scaleMinReplicas: 0
 ```
+
 ### Containerize service deployment
 :::row:::
     :::column:::
