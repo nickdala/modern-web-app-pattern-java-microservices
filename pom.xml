@@ -8,7 +8,6 @@
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.2.8</version>
 		<relativePath />
-		<!-- lookup parent from repository -->
 	</parent>
 
     <groupId>com.contoso.cams</groupId>
@@ -25,13 +24,14 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
         <protobuf.version>3.25.3</protobuf.version>
+        <grpc.java.version>1.68.0</grpc.java.version>
         <protobuf.maven.plugin.version>0.6.1</protobuf.maven.plugin.version>
         <os.maven.plugin.version>1.7.1</os.maven.plugin.version>
         <version.spring.boot>3.2.8</version.spring.boot>
         <commons-lang3.version>3.14.0</commons-lang3.version>
-        <spring-cloud-azure.version>5.14.0</spring-cloud-azure.version>
+        <spring-cloud-azure.version>5.18.0</spring-cloud-azure.version>
 		<spring-cloud.version>2023.0.3</spring-cloud.version>
         <applicationinsights.version>3.5.4</applicationinsights.version>
     </properties>
