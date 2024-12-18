@@ -24,3 +24,9 @@ services:
     host: containerapp
     docker:
       path: ./Dockerfile
+  support-guide:
+    project: ./apps/supportguide
+    language: java
+    host: containerapp
+    docker:
+      path: ./Dockerfile
