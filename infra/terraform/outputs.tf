@@ -176,3 +176,8 @@ output "secondary_app_config_id" {
   value = var.environment == "prod" ? module.secondary_azconfig[0].azconfig_id : null
   description = "The secondary app config ID."
 }
+
+output "support_guide_url" {
+  value = module.dev_aca[0].support_guide_url
+  description = "The Support Guide URL."
+}

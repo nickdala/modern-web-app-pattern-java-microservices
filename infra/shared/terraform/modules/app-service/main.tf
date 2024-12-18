@@ -104,6 +104,8 @@ resource "azurerm_linux_web_app" "application" {
     APPINSIGHTS_INSTRUMENTATIONKEY = var.app_insights_instrumentation_key
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     APP_CONFIGURATION_ENDPOINT = var.app_config_endpoint
+    CONTOSO_SUPPORT_GUIDE_FILE_SERVICE = "legacy"
+    SUPPORT_GUIDE_URL = var.support_guide_url
   }
 
   logs {

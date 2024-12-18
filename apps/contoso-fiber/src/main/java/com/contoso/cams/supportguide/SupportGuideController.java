@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Slf4j
 @RequestMapping(value = "/guides")
 public class SupportGuideController {
-    private final SupportGuideService guideService;
+    private final SupportGuideFileService guideService;
 
     @GetMapping("/list")
     @PreAuthorize("hasAnyAuthority('APPROLE_AccountManager')")

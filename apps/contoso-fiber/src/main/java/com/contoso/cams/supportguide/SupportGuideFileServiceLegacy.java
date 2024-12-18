@@ -11,7 +11,6 @@ import org.springframework.core.io.InputStreamSource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.WritableResource;
-import org.springframework.stereotype.Service;
 import org.springframework.util.FileCopyUtils;
 
 import com.contoso.cams.model.SupportGuide;
@@ -20,20 +19,23 @@ import com.contoso.cams.model.SupportGuideRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Service
+//@Service
 @AllArgsConstructor
 @Slf4j
-public class SupportGuideService {
+public class SupportGuideFileServiceLegacy implements SupportGuideFileService {
 
     private static final String BLOB_RESOURCE_PATTERN = "azure-blob://%s/%s";
 
     private final SupportGuideRepository guideRepository;
     private final ResourceLoader resourceLoader;
 
-    @Value("${spring.cloud.azure.storage.blob.container-name}")
+    //@Value("${spring.cloud.azure.storage.blob.container-name}")
     private final String blobContainerName;
 
+    @Override
     public List<SupportGuideDto> getSupportGuides() {
+        log.info("Retrieving support guides from legacy service");
+
         return guideRepository.findAll().stream()
             .map(guide -> new SupportGuideDto(
                 guide.getId(),
@@ -43,7 +45,10 @@ public class SupportGuideService {
             .collect(Collectors.toList());
     }
 
+    @Override
     public void uploadGuide(UploadSupportGuideRequest uploadFormData) throws IOException {
+        log.info("Uploading guide from legacy service");
+
         final String fileName = uploadFormData.file.getOriginalFilename();
         final String description = uploadFormData.getDescription();
         final InputStreamSource guideInputStream = uploadFormData.getFile();
