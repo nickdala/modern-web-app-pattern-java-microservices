@@ -8,6 +8,11 @@ output "web_app_id" {
   description = "The ID of the web app."
 }
 
+output "web_app_ip" {
+    value       = azurerm_linux_web_app.application.outbound_ip_address_list
+    description = "The list of outbound IP addresses of the web app."
+}
+
 output "application_principal_id" {
   value       = azurerm_linux_web_app.application.identity[0].principal_id
   description = "The id of system assigned managed identity"

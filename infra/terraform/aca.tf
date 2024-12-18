@@ -66,3 +66,10 @@ module "dev_aca" {
   app_insights_connection_string                 = module.dev_app_insights[0].connection_string
   servicebus_namespace_primary_connection_string = module.dev_servicebus[0].servicebus_namespace_primary_connection_string
 }
+
+resource "azurerm_role_assignment" "storage_container_support_guide_data_contributor_dev" {
+  count                = var.environment == "dev" ? 1 : 0
+  scope                = module.dev_storage[0].storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.dev_aca.0.support_guide_identity_principal_id //azurerm_container_app.support-guide-container_app.identity.0.principal_id
+}

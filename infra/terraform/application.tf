@@ -23,6 +23,7 @@ module "application" {
   frontdoor_profile_uuid           = module.frontdoor[0].resource_guid
   public_network_access_enabled    = false
   app_config_endpoint              = module.azconfig[0].azconfig_uri
+  support_guide_url = ""
 }
 
 # -----------------------
@@ -46,7 +47,7 @@ module "secondary_application" {
   frontdoor_profile_uuid           = module.frontdoor[0].resource_guid
   public_network_access_enabled    = false
   app_config_endpoint              = module.secondary_azconfig[0].azconfig_uri
-
+  support_guide_url = ""
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +75,7 @@ module "dev_application" {
   frontdoor_profile_uuid           = module.dev_frontdoor[0].resource_guid
   public_network_access_enabled    = true
   app_config_endpoint              = module.dev_azconfig[0].azconfig_uri
+  support_guide_url                = module.dev_aca[0].support_guide_url
 }
 
 resource "null_resource" "dev_service_connector" {
@@ -83,7 +85,7 @@ resource "null_resource" "dev_service_connector" {
     web_app_id = module.dev_application[0].web_app_id
     db_id      = azurerm_postgresql_flexible_server_database.dev_postresql_database_db[0].id
   }
-  
+
   provisioner "local-exec" {
     command = "bash ../scripts/setup-service-connector.sh ${module.dev_application[0].web_app_id} ${azurerm_postgresql_flexible_server_database.dev_postresql_database_db[0].id}"
   }

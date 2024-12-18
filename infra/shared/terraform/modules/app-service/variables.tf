@@ -67,11 +67,16 @@ variable "public_network_access_enabled" {
 variable "app_config_endpoint" {
   type = string
   description = "The Azure App Configuration URI."
-  
+
 }
 
 variable "service_management_reference" {
   type = string
   description = "value for the service management reference"
   default = null
+}
+
+variable "support_guide_url" {
+  type = string
+  description = "The URL for the support guide"
 }
