@@ -23,6 +23,16 @@
 		</dependency>
 
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-actuator</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>net.devh</groupId>
             <artifactId>grpc-spring-boot-starter</artifactId>
             <version>3.1.0.RELEASE</version>
@@ -61,6 +71,7 @@
 	</dependencies>
 
 	<build>
+        <finalName>supportguide</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
